@@ -38,7 +38,9 @@ mvn spring-boot:run
 
 Compose es un despliegue local de desarrollo, no una configuración para nube/producción. No hay todavía pipeline CI/CD, TLS, proxy inverso ni infraestructura cloud. En cada `docker compose up`, el servicio `db-init` aplica idempotentemente el esquema y los triggers/procedimientos antes de iniciar la API.
 
-El esquema reside en `src/main/resources/SQLResources/schema.sql`; los triggers y procedimientos en `src/main/resources/SQLResources/triggers_y_procedures.sql`. La inicialización crea las tablas de usuarios, billeteras y sus movimientos, estaciones, vehículos, viajes, tarifas, traslados y auditoría, además de conservar `tareas` como ejemplo. En ejecuciones locales de Maven sin Compose, aplica ambos scripts con `psql` antes de probar los endpoints del dominio.
+El esquema reside en `src/main/resources/SQLResources/schema.sql`; los triggers y procedimientos en `src/main/resources/SQLResources/triggers_y_procedures.sql`. La inicialización crea las tablas de usuarios, billeteras y sus movimientos, estaciones, vehículos, viajes, tarifas, traslados y auditoría. Para cargar datos locales de verificación, ejecuta `src/main/resources/SQLResources/datos_prueba.sql` después de aplicar ambos scripts SQL.
+
+El fixture crea los usuarios `UsuarioConDinero` (saldo 100), `UsuarioSinDinero` (saldo 0), `UsuarioSaldoNegativo` (saldo -1) y `OperadorFlota`. Comparten la contraseña `Prueba123!QA2026`. También crea cuatro estaciones de demostración: `DemoCentro` (5 vehículos), `DemoNorte` (3), `DemoSur` (3) y `DemoVacia` (sin vehículos). Centro y Norte permiten probar un rebalanceo de scooter; Centro incluye además un scooter con batería inferior al 20%.
 
 ## Autenticación y permisos
 
@@ -91,11 +93,11 @@ Para probar otro secreto local, define `JWT_SECRET` en el entorno antes de levan
 | `POST` | `/api/v1/auth/login` | Público |
 | `GET` | `/api/v1/usuarios/me` | JWT válido |
 | `GET`, `POST` | `/api/v1/usuarios` | `ADMIN` |
-| `GET`, `PUT`, `DELETE` | `/api/v1/usuarios/{id}` | `ADMIN`; DELETE desactiva |
+| `GET`, `PUT`, `DELETE` | `/api/v1/usuarios/{id}` | `ADMIN`; PUT permite cambiar la contraseña si se incluye; DELETE desactiva |
 | `GET`, `POST`, `PUT`, `DELETE` | `/api/v1/estaciones...` | `OPERADOR` o `ADMIN`; DELETE desactiva |
-| `GET`, `POST`, `PUT`, `PATCH`, `DELETE` | `/api/v1/vehiculos...` | `OPERADOR` o `ADMIN`; PATCH cambia estado con auditoría y DELETE da de baja |
+| `GET`, `POST`, `PUT`, `PATCH`, `DELETE` | `/api/v1/vehiculos...` | `OPERADOR` o `ADMIN`; PUT actualiza datos editables; PATCH cambia estado con auditoría y DELETE da de baja |
 | `GET`, `POST`, `PUT`, `DELETE` | `/api/v1/tarifas...` | `OPERADOR` o `ADMIN`; DELETE desactiva |
-| `GET`, `POST`, `DELETE` | `/api/v1/billeteras...` | `ADMIN`; DELETE desactiva solo con saldo cero |
+| `GET`, `POST`, `PUT`, `DELETE` | `/api/v1/billeteras...` | `ADMIN` crea; `OPERADOR` o `ADMIN` actualizan saldo con motivo y movimiento contable; DELETE desactiva solo con saldo cero |
 | `GET` | `/api/v1/billeteras/me` y `/api/v1/billeteras/{id}/movimientos` | Usuario autenticado; los movimientos son propios |
 | `GET` | `/api/v1/billeteras/{id}` y `/api/v1/billeteras` | `OPERADOR` o `ADMIN` |
 | `PATCH` | `/api/v1/billeteras/{id}/movimientos/{ABONO\|CARGO}` | `OPERADOR` o `ADMIN`; ajuste auditado |
@@ -103,13 +105,15 @@ Para probar otro secreto local, define `JWT_SECRET` en el entorno antes de levan
 | `GET` | `/api/v1/viajes/{id}` | Propietario del viaje, `OPERADOR` o `ADMIN` |
 | `POST` | `/api/v1/viajes` | Usuario autenticado; inicia un viaje propio |
 | `POST` | `/api/v1/viajes/{id}/finalizar` | Propietario del viaje; liquida el viaje |
+| `PUT` | `/api/v1/viajes/{id}` | Propietario; finaliza el viaje con la estación de destino |
 | `DELETE` | `/api/v1/viajes/{id}` | Propietario del viaje; cancela un viaje activo |
 | `GET` | `/api/v1/viajes` | `OPERADOR` o `ADMIN`; historial global |
-| `GET`, `POST` | `/api/v1/ordenes-traslado...` | `OPERADOR` o `ADMIN`; POST ejecuta el rebalanceo |
-| `GET` | `/api/v1/vehiculos/{id}/auditoria` | `OPERADOR` o `ADMIN` |
+| `GET`, `POST`, `PUT`, `DELETE` | `/api/v1/ordenes-traslado...` | `OPERADOR` o `ADMIN`; PUT ajusta cantidad junto con el inventario; DELETE revierte el traslado si los vehículos siguen disponibles y existe capacidad |
+| `GET` | `/api/v1/auditorias`, `/api/v1/auditorias/{id}`, `/api/v1/vehiculos/{id}/auditoria` | `OPERADOR` o `ADMIN` |
+| `POST`, `PUT`, `DELETE` | `/api/v1/auditorias...` | Solo `ADMIN`; mantenimiento manual de registros |
 | `GET` | `/api/v1/estaciones/disponibles` | Usuario autenticado |
 | `GET` | `/api/v1/usuarios/me/resumen-mensual` | Usuario autenticado; propio resumen |
 | `GET` | `/api/v1/usuarios/{id}/resumen-mensual` | `ADMIN` |
 | `GET` | `/actuator/health` | Público |
 
-Las operaciones que afectan historial no permiten edición ni borrado físico: los viajes se finalizan o cancelan mediante operaciones de dominio; los movimientos de billetera, las órdenes ejecutadas y la auditoría son registros append-only. Las estaciones, usuarios, billeteras, vehículos y tarifas se desactivan o dan de baja lógicamente para conservar referencias e historial.
+Las operaciones que afectan historial tienen reglas específicas: los viajes se finalizan o cancelan mediante operaciones de dominio; los ajustes de billetera dejan movimientos contables; una orden solo se ajusta o elimina si el inventario permite aplicar también la operación inversa. Los endpoints administrativos de auditoría permiten mantenimiento manual y, por ello, pueden alterar el historial; en el flujo normal, los cambios de estado de vehículos siguen siendo registrados por el trigger. Estaciones, usuarios, billeteras, vehículos y tarifas se desactivan o dan de baja lógicamente para conservar referencias.

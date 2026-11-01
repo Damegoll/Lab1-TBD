@@ -1,6 +1,7 @@
 package com.labtbd.service;
 
 import com.labtbd.dto.RebalanceoRequest;
+import com.labtbd.dto.OrdenTrasladoUpdateRequest;
 import com.labtbd.entity.OrdenTraslado;
 import com.labtbd.repository.OrdenTrasladoRepository;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,32 @@ public class OrdenTrasladoService {
     public OrdenTraslado findById(long id) {
         return repo.findById(id).orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Orden de traslado no encontrada"));
+    }
+
+    @Transactional
+    public void updateCantidad(long id, OrdenTrasladoUpdateRequest request) {
+        int updated = repo.updateCantidad(id, request.cantidad());
+        if (updated == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Orden de traslado no encontrada");
+        }
+        if (updated < 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede ajustar la orden con el inventario disponible actualmente");
+        }
+    }
+
+    @Transactional
+    public void deleteAndReverse(long id) {
+        int deleted = repo.deleteAndReverse(id);
+        if (deleted == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Orden de traslado no encontrada");
+        }
+        if (deleted < 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede revertir la orden: faltan vehículos disponibles o capacidad en origen");
+        }
     }
 
     @Transactional

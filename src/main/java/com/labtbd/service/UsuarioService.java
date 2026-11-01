@@ -66,7 +66,9 @@ public class UsuarioService {
                 id,
                 request.nombre(),
                 request.email(),
-                request.rol()
+                request.rol(),
+                request.password() == null
+                        ? null : passwordEncoder.encode(request.password())
         );
 
         if (updated == 0) {

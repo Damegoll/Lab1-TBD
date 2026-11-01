@@ -1,6 +1,7 @@
 package com.labtbd.controller;
 
 import com.labtbd.dto.OrdenTrasladoResponse;
+import com.labtbd.dto.OrdenTrasladoUpdateRequest;
 import com.labtbd.dto.RebalanceoRequest;
 import com.labtbd.service.OrdenTrasladoService;
 import jakarta.validation.Valid;
@@ -34,5 +35,20 @@ public class OrdenTrasladoController {
     public OrdenTrasladoResponse create(@Valid @RequestBody RebalanceoRequest r,
                                         Authentication auth) {
         return OrdenTrasladoResponse.desde(service.rebalancear(r, auth.getName()));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OPERADOR','ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void update(@PathVariable long id,
+                       @Valid @RequestBody OrdenTrasladoUpdateRequest request) {
+        service.updateCantidad(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OPERADOR','ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable long id) {
+        service.deleteAndReverse(id);
     }
 }

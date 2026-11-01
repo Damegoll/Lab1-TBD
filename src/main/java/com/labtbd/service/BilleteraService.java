@@ -1,6 +1,7 @@
 package com.labtbd.service;
 
 import com.labtbd.dto.BilleteraAjusteRequest;
+import com.labtbd.dto.BilleteraUpdateRequest;
 import com.labtbd.dto.MovimientoBilleteraResponse;
 import com.labtbd.entity.Billetera;
 import com.labtbd.entity.TipoMovimientoBilletera;
@@ -79,6 +80,32 @@ public class BilleteraService {
                     wallet.activa()
                             ? "El cargo dejaría saldo negativo"
                             : "La billetera está inactiva");
+        }
+        return findById(id);
+    }
+
+    @Transactional
+    public Billetera update(long id, BilleteraUpdateRequest request, String username) {
+        Billetera wallet = repository.lockById(id).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Billetera no encontrada"));
+        if (!wallet.activa()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede modificar una billetera inactiva");
+        }
+
+        BigDecimal difference = request.saldo().subtract(wallet.saldo());
+        if (difference.signum() == 0) {
+            return wallet;
+        }
+
+        long operatorId = repository.findUserId(username).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Operador no encontrado"));
+        TipoMovimientoBilletera movementType = difference.signum() > 0
+                ? TipoMovimientoBilletera.ABONO : TipoMovimientoBilletera.CARGO;
+        if (repository.adjustBalance(
+                id, difference, movementType, operatorId, request.motivo().trim()) == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El saldo solicitado no es válido para la billetera");
         }
         return findById(id);
     }

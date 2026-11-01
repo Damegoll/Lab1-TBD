@@ -18,5 +18,7 @@ public record UsuarioUpdateRequest(
     String email,
 
     @NotNull
-    Rol rol
+    Rol rol,
+    @Size(min = 12, max = 72)
+    String password
 ) {}

@@ -2,6 +2,7 @@ package com.labtbd.controller;
 
 import com.labtbd.dto.BilleteraAjusteRequest;
 import com.labtbd.dto.BilleteraCreateRequest;
+import com.labtbd.dto.BilleteraUpdateRequest;
 import com.labtbd.dto.BilleteraResponse;
 import com.labtbd.dto.MovimientoBilleteraResponse;
 import com.labtbd.entity.TipoMovimientoBilletera;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -72,6 +74,17 @@ public class BilleteraController {
     ) {
         return BilleteraResponse.desde(
                 service.adjust(id, request, tipo, authentication.getName()));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OPERADOR', 'ADMIN')")
+    public BilleteraResponse update(
+            @PathVariable long id,
+            @Valid @RequestBody BilleteraUpdateRequest request,
+            Authentication authentication
+    ) {
+        return BilleteraResponse.desde(
+                service.update(id, request, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

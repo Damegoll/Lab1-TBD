@@ -21,14 +21,6 @@ ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check
     CHECK (rol IN ('USUARIO', 'OPERADOR', 'ADMIN'));
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_email_key ON usuarios(email);
 
-CREATE TABLE IF NOT EXISTS tareas (
-    id          BIGSERIAL PRIMARY KEY,
-    titulo      VARCHAR(150) NOT NULL,
-    descripcion VARCHAR(1000),
-    completada  BOOLEAN NOT NULL DEFAULT FALSE,
-    creada_en   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS estaciones (
     id     BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,

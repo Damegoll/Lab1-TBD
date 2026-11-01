@@ -43,11 +43,30 @@ public class VehiculoRepository {
                 """, mapper, d.codigo(), d.tipo().name(), d.bateria(), d.estacionId());
     }
 
-    public int update(long id, String codigo, int bateria) {
+    public int update(
+            long id, String codigo, int bateria, TipoVehiculo tipo, Long estacionId) {
         return jdbc.update("""
-                UPDATE vehiculos SET codigo = ?, bateria = ?
+                UPDATE vehiculos
+                SET codigo = ?, bateria = ?, tipo = COALESCE(?, tipo),
+                    estacion_id = COALESCE(?, estacion_id)
                 WHERE id = ? AND estado <> 'DADO_DE_BAJA'
-                """, codigo, bateria, id);
+                """, codigo, bateria, tipo == null ? null : tipo.name(), estacionId, id);
+    }
+
+    public boolean hasActiveTrip(long vehicleId) {
+        Boolean active = jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM viajes WHERE vehiculo_id = ? AND finalizado_en IS NULL
+                )
+                """, Boolean.class, vehicleId);
+        return Boolean.TRUE.equals(active);
+    }
+
+    public boolean hasTripHistory(long vehicleId) {
+        Boolean hasTrips = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM viajes WHERE vehiculo_id = ?)",
+                Boolean.class, vehicleId);
+        return Boolean.TRUE.equals(hasTrips);
     }
 
     public int changeState(long id, EstadoVehiculo estado,

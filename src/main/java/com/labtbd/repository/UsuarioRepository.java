@@ -83,12 +83,13 @@ public class UsuarioRepository {
         );
     }
 
-    public int update(long id, String nombre, String email, Rol rol) {
+    public int update(long id, String nombre, String email, Rol rol, String passwordHash) {
         return jdbc.update("""
                 UPDATE usuarios
-                SET nombre = ?, email = ?, rol = ?
+                SET nombre = ?, email = ?, rol = ?,
+                    password_hash = COALESCE(?, password_hash)
                 WHERE id = ? AND activo = TRUE
-                """, nombre, email, rol.name(), id);
+                """, nombre, email, rol.name(), passwordHash, id);
     }
 
     public int deactivate(long id) {

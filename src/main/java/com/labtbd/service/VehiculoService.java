@@ -45,7 +45,19 @@ public class VehiculoService {
     }
 
     public void update(long id, VehiculoUpdateRequest request) {
-        if (repo.update(id, request.codigo(), request.bateria()) == 0) {
+        Vehiculo current = findById(id);
+        if (request.tipo() != null
+                && request.tipo() != current.tipo()
+                && repo.hasTripHistory(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el tipo de un vehículo con viajes asociados");
+        }
+        if (request.estacionId() != null && repo.hasActiveTrip(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede reubicar un vehículo con un viaje activo");
+        }
+        if (repo.update(id, request.codigo(), request.bateria(),
+                request.tipo(), request.estacionId()) == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "Vehículo no encontrado o dado de baja");
         }
