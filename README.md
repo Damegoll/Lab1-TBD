@@ -1,18 +1,26 @@
-# Lab-TBD-Back
+# Lab1-TBD
 
-API REST en Java 21 / Spring Boot 3.5, PostgreSQL y `JdbcTemplate`. El proyecto no usa JPA, Hibernate ni otro ORM: los repositorios ejecutan SQL explícito.
+Aplicación full-stack compuesta por una API REST en Java 21 / Spring Boot 3.5, frontend Vue/Vite y PostgreSQL. El backend usa `JdbcTemplate` y no utiliza JPA, Hibernate ni otro ORM: los repositorios ejecutan SQL explícito. El código Java y sus archivos de construcción están agrupados en `backend/`; el frontend está en `frontend/`.
 
 ## Despliegue local con Docker Compose
 
-Compose levanta PostgreSQL y la API. Requiere Docker con Docker Compose v2:
+Compose levanta PostgreSQL, la API y el frontend. En Windows, instala e inicia Docker Desktop con el motor de contenedores Linux y Docker Compose v2 habilitados. Espera a que Docker Desktop indique que el motor está en ejecución antes de ejecutar estos comandos desde PowerShell, en la raíz del proyecto:
 
 ```powershell
 docker compose up --build -d
-docker compose ps
-docker compose logs -f api
+docker compose ps -a
+docker compose logs --tail 100 api
+docker compose logs --tail 100 frontend
 ```
 
-La API queda en `http://localhost:8080`; PostgreSQL en `localhost:5433`. Para detener los contenedores sin borrar la base:
+La primera vez, confirma con `docker compose ps -a` que `db-init` terminó con código 0 y que `postgres`, `api` y `frontend` están iniciados. Compose aplica `schema.sql` y `triggers_y_procedures.sql` automáticamente. El frontend Vue/Vite se ejecuta en su propio contenedor. Los datos de demostración **no** se cargan solos; para agregarlos a la base ya iniciada, ejecuta desde la raíz del proyecto:
+
+```powershell
+Get-Content -Raw "backend\src\main\resources\SQLResources\datos_prueba.sql" |
+  docker exec -i lab-tbd-postgres psql -U labtbd -d lab_tbd -v ON_ERROR_STOP=1
+```
+
+El frontend queda en `http://localhost:5173`, la API en `http://localhost:8080` y PostgreSQL queda disponible desde tu PC en `localhost:5433`. Para detener los contenedores sin borrar la base:
 
 ```powershell
 docker compose down
@@ -24,23 +32,40 @@ Para borrar también los datos persistidos (acción destructiva):
 docker compose down -v
 ```
 
-La primera ejecución construye la imagen de la aplicación y puede tardar mientras Maven descarga dependencias. El servicio `api` espera a que PostgreSQL esté saludable antes de arrancar.
+La primera ejecución construye las imágenes del backend y el frontend; puede tardar mientras Maven y npm descargan dependencias. El backend espera a que PostgreSQL esté saludable y el inicializador SQL termine antes de arrancar.
 
-### Ejecutar la API desde Maven
+### Ejecutar solo el backend desde Maven (opcional)
 
-Con Maven 3.9+ y PostgreSQL ya ejecutándose:
+Este modo es opcional; el uso recomendado para levantar toda la aplicación es Docker Compose. Con Maven 3.9+ instalado, se puede ejecutar solo la API fuera de Docker mientras PostgreSQL permanece en Compose:
 
 ```powershell
+docker compose up -d postgres
+docker compose run --rm db-init
+Get-Content -Raw "backend\src\main\resources\SQLResources\datos_prueba.sql" |
+  docker exec -i lab-tbd-postgres psql -U labtbd -d lab_tbd -v ON_ERROR_STOP=1
+Set-Location backend
 mvn spring-boot:run
 ```
 
+`db-init` aplica primero `schema.sql` y luego `triggers_y_procedures.sql`; el comando siguiente carga los datos de demostración. Al iniciar, Spring también aplica `schema.sql`. Si usas un PostgreSQL propio en vez del de Compose, configura `DB_URL`, `DB_USER` y `DB_PASSWORD`, y aplica manualmente los tres archivos en este orden: `schema.sql`, `triggers_y_procedures.sql`, `datos_prueba.sql`.
+
 ## Estado del despliegue
 
-Compose es un despliegue local de desarrollo, no una configuración para nube/producción. No hay todavía pipeline CI/CD, TLS, proxy inverso ni infraestructura cloud. En cada `docker compose up`, el servicio `db-init` aplica idempotentemente el esquema y los triggers/procedimientos antes de iniciar la API.
+Compose es un despliegue local de desarrollo, no una configuración para nube/producción. No hay todavía pipeline CI/CD, TLS, proxy inverso ni infraestructura cloud. En cada `docker compose up`, el servicio `db-init` aplica idempotentemente el esquema y los triggers/procedimientos antes de iniciar la API. La fixture de demostración es un paso separado y puede ejecutarse más de una vez sin duplicar sus registros.
 
-El esquema reside en `src/main/resources/SQLResources/schema.sql`; los triggers y procedimientos en `src/main/resources/SQLResources/triggers_y_procedures.sql`. La inicialización crea las tablas de usuarios, billeteras y sus movimientos, estaciones, vehículos, viajes, tarifas, traslados y auditoría. Para cargar datos locales de verificación, ejecuta `src/main/resources/SQLResources/datos_prueba.sql` después de aplicar ambos scripts SQL.
+El esquema reside en `backend/src/main/resources/SQLResources/schema.sql`; los triggers y procedimientos en `backend/src/main/resources/SQLResources/triggers_y_procedures.sql`; los datos de demostración en `backend/src/main/resources/SQLResources/datos_prueba.sql`. La inicialización crea las tablas de usuarios, billeteras y sus movimientos, estaciones, vehículos, viajes, tarifas, traslados y auditoría. Ejecuta la fixture después de que se hayan aplicado el esquema y los triggers/procedimientos.
 
 El fixture crea los usuarios `UsuarioConDinero` (saldo 100), `UsuarioSinDinero` (saldo 0), `UsuarioSaldoNegativo` (saldo -1) y `OperadorFlota`. Comparten la contraseña `Prueba123!QA2026`. También crea cuatro estaciones de demostración: `DemoCentro` (5 vehículos), `DemoNorte` (3), `DemoSur` (3) y `DemoVacia` (sin vehículos). Centro y Norte permiten probar un rebalanceo de scooter; Centro incluye además un scooter con batería inferior al 20%.
+
+## Desarrollo del frontend
+
+El frontend Vue/Vite está en `frontend/` y Compose lo ejecuta en el contenedor `lab-tbd-frontend`. Para iniciar o reconstruir ambos proyectos, usa `docker compose up --build -d` desde la raíz. Para ver su salida en vivo:
+
+```powershell
+docker compose logs -f frontend
+```
+
+Vite sirve el frontend en `http://localhost:5173`, y el navegador accede a la API en `http://localhost:8080`. `VITE_API_URL` se configura para el frontend en `docker-compose.yml`. El contenedor instala las dependencias con `npm ci`; `node_modules/` y `dist/` están excluidos de Git.
 
 ## Autenticación y permisos
 

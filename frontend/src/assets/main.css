@@ -1,0 +1,154 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f5f7f8;
+}
+
+.page-container {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 3vw, 48px);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 88px;
+  padding: 0 24px;
+}
+
+.brand-name {
+  color: #333f48;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.brand-caption,
+.text-medium-emphasis {
+  color: #64727a;
+}
+
+.drawer-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+.drawer-user-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.page-heading h1 {
+  margin: 2px 0 6px;
+  color: #333f48;
+}
+
+.page-heading p {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #008f88;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 64px);
+  place-items: center;
+}
+
+.auth-card {
+  width: min(100%, 470px);
+}
+
+.battery-cell {
+  min-width: 120px;
+}
+
+.battery-cell .v-progress-linear {
+  max-width: 90px;
+}
+
+.availability-row,
+.summary-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.availability-label,
+.summary-metric span {
+  flex: 1;
+  color: #64727a;
+}
+
+.summary-metric {
+  border-top: 1px solid #e6eaec;
+}
+
+.wallet-balance-card {
+  color: #fff;
+  background: linear-gradient(135deg, #00a99f, #008f88);
+}
+
+.wallet-balance-card .text-body-2 {
+  opacity: 0.9;
+}
+
+.v-data-table {
+  background: transparent;
+}
+
+.v-data-table-header__content {
+  font-weight: 650;
+}
+
+@media (max-width: 600px) {
+  .page-container {
+    padding: 22px 14px;
+  }
+
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .page-heading .v-btn {
+    align-self: stretch;
+  }
+}

@@ -26,15 +26,16 @@ services:
     environment:
       PGPASSWORD: labtbd
     volumes:
-      - ./src/main/resources/SQLResources/schema.sql:/sql/schema.sql:ro
-      - ./src/main/resources/SQLResources/triggers_y_procedures.sql:/sql/triggers_y_procedures.sql:ro
+      - ./backend/src/main/resources/SQLResources/schema.sql:/sql/schema.sql:ro
+      - ./backend/src/main/resources/SQLResources/triggers_y_procedures.sql:/sql/triggers_y_procedures.sql:ro
     entrypoint:
       - sh
       - -c
       - psql -v ON_ERROR_STOP=1 -h postgres -U labtbd -d lab_tbd -f /sql/schema.sql -f /sql/triggers_y_procedures.sql
 
   api:
-    build: .
+    build:
+      context: ./backend
     container_name: lab-tbd-api
     depends_on:
       db-init:
@@ -51,6 +52,17 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
       - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: lab-tbd-frontend
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
 
 volumes:
   pgdata:
